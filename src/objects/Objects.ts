@@ -98,4 +98,10 @@ export type Objects = {
   copyObjectFromVector(vector: MatVector, itemIndex: number): Mat;
   copyObjectFromVector(vector: PointVector, itemIndex: number): Point;
   copyObjectFromVector(vector: RectVector, itemIndex: number): Rect;
+  getMatData(mat: Mat): {
+    size: number;
+    cols: number;
+    rows: number;
+    data: Uint8Array;
+  };
 };
