@@ -1273,6 +1273,256 @@ jsi::Object FOCV_Function::invoke(jsi::Runtime& runtime, const jsi::Value* argum
             
             (*src).convertTo(*dst, rtype);
         } break;
+        case hashString("resize", 6): {
+            auto src = args.asMatPtr(1);
+            auto dst = args.asMatPtr(2);
+            auto size = args.asSizePtr(3);
+
+            if(args.isNumber(6)) {
+                auto fx = args.asNumber(4);
+                auto fy = args.asNumber(5);
+                auto interpolation = args.asNumber(6);
+                cv::resize(*src, *dst, *size, fx, fy, interpolation);
+            } else if (args.isNumber(5)){
+                auto fx = args.asNumber(4);
+                auto fy = args.asNumber(5);
+                cv::resize(*src, *dst, *size, fx, fy);
+            } else {
+                cv::resize(*src, *dst, *size);
+            }
+        } break;
+        case hashString("warpAffine", 10): {
+            auto src = args.asMatPtr(1);
+            auto dst = args.asMatPtr(2);
+            auto m = args.asMatPtr(3);
+            auto dsize = args.asSizePtr(4);
+            
+            if (args.isNumber(6)) {
+                auto flags = args.asNumber(5);
+                auto borderMode = args.asNumber(6);
+
+                cv::warpAffine(*src, *dst, *m, *dsize, flags, borderMode);
+            } else if (args.isNumber(5)) {
+                auto flags = args.asNumber(5);
+                cv::warpAffine(*src, *dst, *m, *dsize, flags);
+            } else {
+                cv::warpAffine(*src, *dst, *m, *dsize);
+            }
+        } break;
+        case hashString("getRotationMatrix2D", 19): {
+            auto center = args.asPointPtr(1);
+            auto angle = args.asNumber(2);
+            auto scale = args.asNumber(3);
+            
+            auto result = cv::getRotationMatrix2D(*center, angle, scale);
+            std::string id = FOCV_Storage::save(result);
+            
+            return FOCV_JsiObject::wrap(runtime, "mat", id);
+        } break;
+        case hashString("rotateBound", 11): {
+            auto src = args.asMatPtr(1);
+            auto angle = args.asNumber(2);
+            auto scale = args.asNumber(3);
+
+            int width = src->cols;
+            int height = src->rows;
+
+            double angleRad = angle * CV_PI / 180.0;
+            double cosA = std::abs(std::cos(angleRad));
+            double sinA = std::abs(std::sin(angleRad));
+
+            int newWidth = static_cast<int>((height * sinA + width * cosA) * scale);
+            int newHeight = static_cast<int>((height * cosA + width * sinA) * scale);
+
+            cv::Point2f center(width / 2.0f, height / 2.0f);
+            cv::Mat rotationMat = cv::getRotationMatrix2D(center, angle, scale);
+
+            rotationMat.at<double>(0, 2) += (newWidth / 2.0) - center.x;
+            rotationMat.at<double>(1, 2) += (newHeight / 2.0) - center.y;
+
+            cv::Mat dst;
+            cv::warpAffine(*src, dst, rotationMat, cv::Size(newWidth, newHeight));
+
+            std::string id = FOCV_Storage::save(dst);
+            return FOCV_JsiObject::wrap(runtime, "mat", id);
+        } break;
+        case hashString("cropAndAlign", 12): {
+            auto src = args.asMatPtr(1);
+            auto width = args.asNumber(2);
+            auto height = args.asNumber(3);
+            auto center = args.asPointPtr(4);
+            auto left = args.asNumber(5);
+            auto top = args.asNumber(6);
+            auto scale = args.asNumber(7);
+            auto angle = args.asNumber(8);
+
+            cv::Mat dst = cv::Mat::zeros(height, width, src->type());
+            cv::Point2f eyeCenter(left, top);
+
+            cv::Mat rotationMatrix = cv::getRotationMatrix2D(eyeCenter, angle, scale);
+
+            rotationMatrix.at<double>(0, 2) += width / 2.0 - eyeCenter.x;
+            rotationMatrix.at<double>(1, 2) += height / 2.0 - eyeCenter.y;
+
+            cv::warpAffine(*src, dst, rotationMatrix, cv::Size(width, height), cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+
+            std::string id = FOCV_Storage::save(dst);
+            return FOCV_JsiObject::wrap(runtime, "mat", id);
+        } break;
+        case hashString("zeros", 5): {
+            auto cols = args.asNumber(1);
+            auto rows = args.asNumber(2);
+            auto type = args.asNumber(3);
+
+            cv::Mat dst;
+            dst = cv::Mat::zeros(cols, rows, type);
+
+            std::string id = FOCV_Storage::save(dst);
+            return FOCV_JsiObject::wrap(runtime, "mat", id);
+        } break;
+        case hashString("copyToByRect", 12): {
+            auto src = args.asMatPtr(1);
+            auto dst = args.asMatPtr(2);
+            auto rect = args.asRectPtr(3);
+
+            // Iterate over the region of interest defined by the rect
+            for (int y = rect->y; y < rect->y + rect->height; ++y) {
+                for (int x = rect->x; x < rect->x + rect->width; ++x) {
+                    // Check the condition: src pixel value must be greater than dst pixel value
+                    if (src->at<uchar>(y - rect->y, x - rect->x) > dst->at<uchar>(y, x)) {
+                        // Copy src pixel to dst if the condition is met
+                        dst->at<uchar>(y, x) = src->at<uchar>(y - rect->y, x - rect->x);
+                    }
+                }
+            }
+        } break;
+        case hashString("grayScaleToRedHeatmap", 21): {
+            auto src = args.asMatPtr(1);    // 8UC1
+            auto dst = args.asMatPtr(2);    // 8UC3
+
+            dst->create(src->rows, src->cols, CV_8UC3);
+            // Iterate through each pixel
+            for (int i = 0; i < src->rows; ++i) {
+                for (int j = 0; j < src->cols; ++j) {
+                    uchar grayValue = src->at<uchar>(i, j);  // Get the grayscale pixel value
+                    dst->at<cv::Vec3b>(i, j) = cv::Vec3b(0, 0, grayValue);  // Set Red channel to grayValue, others to 0
+                }
+            }
+        } break;
+        case hashString("minMaxNorm", 10): {
+            auto src = args.asMatPtr(1);  // Source Mat CV_32F (h x w x d)
+            auto dst = args.asMatPtr(2);  // Destination Mat (h x w x 1)
+
+            // Ensure dst has the correct dimensions (h x w x 1)
+            dst->create(src->rows, src->cols, CV_32FC1); // h x w x 1 for the output
+
+            // Get the number of channels (depth, d)
+            int channels = src->channels();
+
+            // Split the source matrix into separate channels
+            std::vector<cv::Mat> srcChannels;
+            cv::split(*src, srcChannels);  // This splits into h x w per channel
+
+            // Vectors to store min and max values for each channel
+            std::vector<float> minVals(channels);
+            std::vector<float> maxVals(channels);
+
+            // Find min and max for each channel
+            for (int c = 0; c < channels; ++c) {
+                double minVal, maxVal;
+                cv::minMaxLoc(srcChannels[c], &minVal, &maxVal);
+                minVals[c] = static_cast<float>(minVal);
+                maxVals[c] = static_cast<float>(maxVal);
+            }
+
+            // Normalize each channel using (src_value - min) / (max - min)
+            for (int c = 0; c < channels; ++c) {
+                float minVal = minVals[c];
+                float maxVal = maxVals[c];
+                float range = maxVal - minVal;
+
+                if (range > 0) {
+                    srcChannels[c] = (srcChannels[c] - minVal) / range;
+                } else {
+                    // If range is zero, avoid division by zero (set the channel to zero)
+                    srcChannels[c] = cv::Mat::zeros(srcChannels[c].size(), srcChannels[c].type());
+                }
+            }
+
+            // Now, merge the normalized channels back into a single matrix
+            cv::Mat normalizedMat;
+            cv::merge(srcChannels, normalizedMat);  // Still h x w x d
+
+            // Compute the max value across the channels for each pixel
+            cv::Mat maxAcrossChannels = srcChannels[0].clone();
+            for (int c = 1; c < channels; ++c) {
+                cv::max(maxAcrossChannels, srcChannels[c], maxAcrossChannels);
+            }
+
+            // Copy the final result into dst
+            maxAcrossChannels.copyTo(*dst);
+
+        } break;
+        case hashString("getHeatMapFromBuffer", 20): {
+            auto src = args.asMatPtr(1);  // Source Mat CV_32F (h x w x d)
+            auto dst = args.asMatPtr(2);  // Destination Mat (h x w x 1)
+            auto makeNorm = args.asBool(3);
+
+            // Ensure dst has the correct dimensions (h x w x 1)
+            dst->create(src->rows, src->cols, CV_8UC1);  // h x w x 1 for the output
+
+            // Get the number of channels (depth, d)
+            int channels = src->channels();
+
+            // Split the source matrix into separate channels
+            std::vector<cv::Mat> srcChannels;
+            cv::split(*src, srcChannels);  // This splits into h x w per channel
+
+            // Vectors to store min and max values for each channel
+            std::vector<float> minVals(channels);
+            std::vector<float> maxVals(channels);
+
+            // Min max normalization
+            if (makeNorm) {
+                for (int c = 0; c < channels; ++c) {
+                    double minVal, maxVal;
+                    cv::minMaxLoc(srcChannels[c], &minVal, &maxVal);
+                    minVals[c] = static_cast<float>(minVal);
+                    maxVals[c] = static_cast<float>(maxVal);
+                    std::cout << "Channel " << c << " min: " << minVal << " max: " << maxVal << std::endl;
+                }
+
+                // Normalize each channel using (src_value - min) / (max - min)
+                for (int c = 0; c < channels; ++c) {
+                    float minVal = minVals[c];
+                    float maxVal = maxVals[c];
+                    float range = maxVal - minVal;
+
+                    if (range > 0) {
+                        srcChannels[c] = (srcChannels[c] - minVal) / range;
+                    } else {
+                        // If range is zero, avoid division by zero (set the channel to zero)
+                        srcChannels[c] = cv::Mat::zeros(srcChannels[c].size(), srcChannels[c].type());
+                    }
+                }
+            }
+
+            // Compute the max value across the channels for each pixel
+            cv::Mat maxAcrossChannels = srcChannels[0].clone();
+            for (int c = 1; c < channels; ++c) {
+                cv::max(maxAcrossChannels, srcChannels[c], maxAcrossChannels);
+            }
+
+            // Normalize the max values to the range [0, 255]
+            maxAcrossChannels = maxAcrossChannels * 255.0f;
+            // Clamp values between 0 and 255
+            cv::Mat clamped;
+            cv::threshold(maxAcrossChannels, clamped, 255, 255, cv::THRESH_TRUNC);
+            cv::threshold(clamped, clamped, 0, 0, cv::THRESH_TOZERO);
+
+            // Convert to CV_8U format
+            clamped.convertTo(*dst, CV_8U);
+        } break;
     }
     
     return value;

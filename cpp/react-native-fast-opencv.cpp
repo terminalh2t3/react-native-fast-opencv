@@ -50,15 +50,84 @@ jsi::Value OpenCVPlugin::get(jsi::Runtime &runtime, const jsi::PropNameID &propN
         TypedArrayBase inputBuffer = getTypedArray(runtime, std::move(input));
         auto vec = inputBuffer.toVector(runtime);
 
-                cv::Mat mat(arguments[0].asNumber(), arguments[1].asNumber(), CV_8UC3, vec.data());
-                auto id = FOCV_Storage::save(mat);
+        cv::Mat mat(arguments[0].asNumber(), arguments[1].asNumber(), CV_8UC3, vec.data());
+        auto id = FOCV_Storage::save(mat);
+
+        return FOCV_JsiObject::wrap(runtime, "mat", id);
+    });
+  }
+  else if (propName == "bufferToMat") {
+    return jsi::Function::createFromHostFunction(
+        runtime, jsi::PropNameID::forAscii(runtime, "bufferToMat"), 1,
+        [=](jsi::Runtime& runtime, const jsi::Value& thisValue, const jsi::Value* arguments,
+            size_t count) -> jsi::Object {
+
+        jsi::Object input = arguments[2].asObject(runtime);
+        TypedArrayBase inputBuffer = getTypedArray(runtime, std::move(input));
+        auto vec = inputBuffer.toVector(runtime);
+
+        int rows = arguments[0].asNumber();
+        int cols = arguments[1].asNumber();
+
+        size_t bufferSize = vec.size();
+        int channels = static_cast<int>(bufferSize / (rows * cols));
+
+        int matType;
+        if (channels == 1) {
+            matType = CV_8UC1; // Grayscale
+        } else if (channels == 3) {
+            matType = CV_8UC3; // RGB
+        } else if (channels == 4) {
+            matType = CV_8UC4; // RGBA
+        } else {
+            throw std::runtime_error("Unsupported number of channels in buffer");
+        }
+
+        cv::Mat mat(rows, cols, matType, vec.data());
+        auto id = FOCV_Storage::save(mat);
+
+        return FOCV_JsiObject::wrap(runtime, "mat", id);
+    });
+  }
+  else if (propName == "bufferF32ToMat") {
+    return jsi::Function::createFromHostFunction(
+        runtime, jsi::PropNameID::forAscii(runtime, "bufferF32ToMat"), 1,
+        [=](jsi::Runtime& runtime, const jsi::Value& thisValue, const jsi::Value* arguments,
+            size_t count) -> jsi::Object {
+
+        jsi::Object input = arguments[2].asObject(runtime);
+        TypedArrayBase inputBuffer = getTypedArray(runtime, std::move(input));
+        auto vec = inputBuffer.toVector32F(runtime);
+
+        int rows = arguments[0].asNumber();
+        int cols = arguments[1].asNumber();
+
+        size_t bufferSize = vec.size();
+        int channels = static_cast<int>(bufferSize / (rows * cols));
+              
+        // Ensure the buffer size is consistent with rows, cols, and channels
+        if (bufferSize != rows * cols * channels) {
+            throw std::runtime_error("Buffer size mismatch with rows, cols, and channels.");
+        }
+
+        int matType;
+        if (channels >= 1) {
+            matType = CV_MAKETYPE(CV_32F, channels);  // CV_32F with N channels
+        } else {
+            throw std::runtime_error("Unsupported number of channels in buffer");
+        }
+
+        // Create cv::Mat and perform a deep copy
+        cv::Mat mat(rows, cols, matType);
+        memcpy(mat.data, vec.data(), bufferSize * sizeof(float));
+        auto id = FOCV_Storage::save(mat);
 
         return FOCV_JsiObject::wrap(runtime, "mat", id);
     });
   }
   else if (propName == "base64ToMat") {
       return jsi::Function::createFromHostFunction(
-          runtime, jsi::PropNameID::forAscii(runtime, "frameBufferToMat"), 1,
+          runtime, jsi::PropNameID::forAscii(runtime, "base64ToMat"), 1,
           [=](jsi::Runtime& runtime, const jsi::Value& thisValue, const jsi::Value* arguments,
               size_t count) -> jsi::Object {
 
@@ -204,7 +273,7 @@ jsi::Value OpenCVPlugin::get(jsi::Runtime &runtime, const jsi::PropNameID &propN
                 std::string id = "";
                 id = FOCV_Storage::save(crop);
                 
-                return FOCV_JsiObject::wrap(runtime, 'mat', id);
+                return FOCV_JsiObject::wrap(runtime, "mat", id);
             });
     }
 
@@ -216,6 +285,7 @@ std::vector<jsi::PropNameID> OpenCVPlugin::getPropertyNames(jsi::Runtime &runtim
     std::vector<jsi::PropNameID> result;
 
     result.push_back(jsi::PropNameID::forAscii(runtime, "frameBufferToMat"));
+    result.push_back(jsi::PropNameID::forAscii(runtime, "bufferToMat"));
     result.push_back(jsi::PropNameID::forAscii(runtime, "base64ToMat"));
     result.push_back(jsi::PropNameID::forAscii(runtime, "matToBuffer"));
     result.push_back(jsi::PropNameID::forAscii(runtime, "createObject"));

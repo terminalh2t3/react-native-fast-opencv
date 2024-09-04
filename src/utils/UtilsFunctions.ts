@@ -3,6 +3,8 @@ import type { Mat } from '../objects/Objects';
 export type UtilsFunctions = {
   clearBuffers(): void;
   frameBufferToMat(rows: number, cols: number, input: Uint8Array): Mat;
+  bufferToMat(rows: number, cols: number, input: Uint8Array): Mat;
+  bufferF32ToMat(rows: number, cols: number, input: Float32Array): Mat;
   base64ToMat(data: string): Mat;
   matToBuffer(
     mat: Mat,

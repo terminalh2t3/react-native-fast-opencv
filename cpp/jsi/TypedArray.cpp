@@ -123,6 +123,12 @@ std::vector<uint8_t> TypedArrayBase::toVector(jsi::Runtime& runtime) {
   return std::vector<uint8_t>(start, end);
 }
 
+std::vector<float> TypedArrayBase::toVector32F(jsi::Runtime& runtime) {
+  auto start = reinterpret_cast<float*>(getBuffer(runtime).data(runtime) + byteOffset(runtime));
+  auto end = start + byteLength(runtime) / sizeof(float);
+  return std::vector<float>(start, end);
+}
+
 jsi::ArrayBuffer TypedArrayBase::getBuffer(jsi::Runtime& runtime) const {
   auto buffer = getProperty(runtime, propNameIDCache.get(runtime, Prop::Buffer));
   if (buffer.isObject() && buffer.asObject(runtime).isArrayBuffer(runtime)) {
@@ -209,6 +215,16 @@ std::vector<ContentType<T>> TypedArray<T>::toVector(jsi::Runtime& runtime) {
   auto end = start + size(runtime);
   return std::vector<ContentType<T>>(start, end);
 }
+
+template <TypedArrayKind T>
+std::vector<ContentType<T>> TypedArray<T>::toVector32F(jsi::Runtime& runtime) {
+    // This assumes the content type of T is float32
+    auto start =
+        reinterpret_cast<ContentType<T>*>(getBuffer(runtime).data(runtime) + byteOffset(runtime));
+    auto end = start + byteLength(runtime) / sizeof(ContentType<T>);
+    return std::vector<ContentType<T>>(start, end);
+}
+
 
 template <TypedArrayKind T>
 void TypedArray<T>::update(jsi::Runtime& runtime, const std::vector<ContentType<T>>& data) {

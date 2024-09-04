@@ -12,8 +12,10 @@ import type {
 import type { DataTypes } from '../constants/DataTypes';
 import type {
   Mat,
+  Size,
   MatVector,
   Point,
+  Rect,
   PointVector,
   Scalar,
 } from '../objects/Objects';
@@ -912,4 +914,14 @@ export type Core = {
    * @param rtype  desired output matrix type or, rather, the depth since the number of channels are the same as the input has; if rtype is negative, the output matrix will have the same type as the input.
    */
   invoke(name: 'convertTo', src: Mat, dst: Mat, rtype: DataTypes): void;
+  invoke(name: 'resize', src: Mat, dst: Mat, size: Size, fx?: number, fy?: number, interpolation?: number): void;
+  invoke(name: 'warpAffine', src: Mat, dst: Mat, M: Mat, size: Size, flags?: number, borderMode?: number): void;
+  invoke(name: 'getRotationMatrix2D', center: Point, angle: number, scale: number): Mat;
+  invoke(name: 'rotateBound', src: Mat, angle: number, scale: number): Mat;
+  invoke(name: 'cropAndAlign', src: Mat, width: number, height: number, center: Point, left: number, top: number, scale: number, angle: number): Mat;
+  invoke(name: 'zeros', cols: number, rows: number, type: DataTypes): Mat;
+  invoke(name: 'copyToByRect', src: Mat, dst: Mat, rect: Rect): void;
+  invoke(name: 'grayScaleToRedHeatmap', src: Mat, dst: Mat): void;
+  invoke(name: 'minMaxNorm', src: Mat, dst: Mat): void;
+  invoke(name: 'getHeatMapFromBuffer', src: Mat, dst: Mat, makeNorm: boolean, blur?: number): void;
 };

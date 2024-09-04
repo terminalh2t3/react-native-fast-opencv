@@ -112,6 +112,7 @@ public:
   bool hasBuffer(jsi::Runtime& runtime) const;
 
   std::vector<uint8_t> toVector(jsi::Runtime& runtime);
+  std::vector<float> toVector32F(jsi::Runtime& runtime);
   jsi::ArrayBuffer getBuffer(jsi::Runtime& runtime) const;
 
 private:
@@ -135,6 +136,7 @@ public:
   TypedArray& operator=(TypedArray&&) = default;
 
   std::vector<ContentType<T>> toVector(jsi::Runtime& runtime);
+  std::vector<ContentType<T>> toVector32F(jsi::Runtime& runtime);
   void update(jsi::Runtime& runtime, const std::vector<ContentType<T>>& data);
   void updateUnsafe(jsi::Runtime& runtime, ContentType<T>* data, size_t length);
   uint8_t* data(jsi::Runtime& runtime);
