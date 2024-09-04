@@ -175,6 +175,38 @@ jsi::Value OpenCVPlugin::get(jsi::Runtime &runtime, const jsi::PropNameID &propN
                 return value;
             });
     }
+    else if (propName == "getMatRoi")
+    {
+        return jsi::Function::createFromHostFunction(
+            runtime, jsi::PropNameID::forAscii(runtime, "getMatData"), 1,
+            [=](jsi::Runtime &runtime, const jsi::Value &thisValue, const jsi::Value *arguments,
+                size_t count) -> jsi::Object
+            {
+                // arg: mat, roiRect
+                jsi::Object value(runtime);
+                std::string matId = FOCV_JsiObject::id_from_wrap(runtime, arguments[0]);
+                std::string rectId = FOCV_JsiObject::id_from_wrap(runtime, arguments[1]);
+
+                auto mat = *FOCV_Storage::get<cv::Mat>(matId);
+                auto roiRect = *FOCV_Storage::get<cv::Rect>(rectId);
+
+                auto image_rect = cv::Rect({}, mat.size());
+
+                auto intersection = image_rect & roiRect;
+
+                // Move intersection to the result coordinate space
+                auto inter_roi = intersection - roiRect.tl();
+
+                // Create black image and copy intersection
+                cv::Mat crop = cv::Mat::zeros(roiRect.size(), mat.type());
+                mat(intersection).copyTo(crop(inter_roi));
+
+                std::string id = "";
+                id = FOCV_Storage::save(crop);
+                
+                return FOCV_JsiObject::wrap(runtime, 'mat', id);
+            });
+    }
 
     return jsi::HostObject::get(runtime, propNameId);
 }
@@ -192,6 +224,7 @@ std::vector<jsi::PropNameID> OpenCVPlugin::getPropertyNames(jsi::Runtime &runtim
     result.push_back(jsi::PropNameID::forAscii(runtime, "invoke"));
     result.push_back(jsi::PropNameID::forAscii(runtime, "clearBuffers"));
     result.push_back(jsi::PropNameID::forAscii(runtime, "getMatData"));
+    result.push_back(jsi::PropNameID::forAscii(runtime, "getMatRoi"));
 
     return result;
 }

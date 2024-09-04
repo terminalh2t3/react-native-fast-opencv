@@ -104,4 +104,5 @@ export type Objects = {
     rows: number;
     data: Uint8Array;
   };
+  getMatRoi(mat: Mat, rectRoi: Rect): Mat;
 };
