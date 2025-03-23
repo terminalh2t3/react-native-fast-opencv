@@ -1545,9 +1545,14 @@ jsi::Object FOCV_Function::invoke(jsi::Runtime& runtime, const jsi::Value* argum
             
             // Calculate the mean brightness
             cv::Scalar meanVal = cv::mean(grayImg);
+
+            // Calculate the contract by standard deviation from grayscale image
+            cv::Scalar stdDev;
+            cv::meanStdDev(grayImg, cv::Scalar(), stdDev);
             
             // Return the mean value (first channel)
-            value.setProperty(runtime, "value", jsi::Value(meanVal[0]));
+            value.setProperty(runtime, "brightness", jsi::Value(meanVal[0]));
+            value.setProperty(runtime, "contrast", jsi::Value(stdDev[0]));
         } break;
     }
     
