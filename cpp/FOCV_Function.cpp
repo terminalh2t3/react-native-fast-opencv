@@ -1523,6 +1523,32 @@ jsi::Object FOCV_Function::invoke(jsi::Runtime& runtime, const jsi::Value* argum
             // Convert to CV_8U format
             clamped.convertTo(*dst, CV_8U);
         } break;
+        case hashString("getLightingScore", 16): {
+            // Input image
+            auto src = args.asMatPtr(1);
+            
+            // Create grayscale image
+            cv::Mat grayImg;
+            
+            // Convert to grayscale based on the number of channels
+            int channels = src->channels();
+            if (channels == 1) {
+                // Already grayscale
+                grayImg = src->clone();
+            } else if (channels == 3) {
+                // BGR image
+                cv::cvtColor(*src, grayImg, cv::COLOR_BGR2GRAY);
+            } else if (channels == 4) {
+                // BGRA image
+                cv::cvtColor(*src, grayImg, cv::COLOR_BGRA2GRAY);
+            }
+            
+            // Calculate the mean brightness
+            cv::Scalar meanVal = cv::mean(grayImg);
+            
+            // Return the mean value (first channel)
+            value.setProperty(runtime, "value", jsi::Value(meanVal[0]));
+        } break;
     }
     
     return value;

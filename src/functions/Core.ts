@@ -924,4 +924,5 @@ export type Core = {
   invoke(name: 'grayScaleToRedHeatmap', src: Mat, dst: Mat): void;
   invoke(name: 'minMaxNorm', src: Mat, dst: Mat): void;
   invoke(name: 'getHeatMapFromBuffer', src: Mat, dst: Mat, makeNorm: boolean, blur?: number): void;
+  invoke(name: 'getLightingScore', src: Mat): { value: number };
 };
