@@ -50,7 +50,11 @@ jsi::Value OpenCVPlugin::get(jsi::Runtime &runtime, const jsi::PropNameID &propN
         TypedArrayBase inputBuffer = getTypedArray(runtime, std::move(input));
         auto vec = inputBuffer.toVector(runtime);
 
-        cv::Mat mat(arguments[0].asNumber(), arguments[1].asNumber(), CV_8UC3, vec.data());
+        // Create a temporary Mat first
+        cv::Mat tempMat(arguments[0].asNumber(), arguments[1].asNumber(), CV_8UC3, vec.data());
+        // Then clone it to create a deep copy that owns its data
+        cv::Mat mat = tempMat.clone();
+        
         auto id = FOCV_Storage::save(mat);
 
         return FOCV_JsiObject::wrap(runtime, "mat", id);
@@ -83,7 +87,10 @@ jsi::Value OpenCVPlugin::get(jsi::Runtime &runtime, const jsi::PropNameID &propN
             throw std::runtime_error("Unsupported number of channels in buffer");
         }
 
-        cv::Mat mat(rows, cols, matType, vec.data());
+        // Create a Mat and perform a deep copy of the data
+        cv::Mat tempMat(rows, cols, matType, vec.data());
+        cv::Mat mat = tempMat.clone();  // Create a deep copy that owns its data
+        
         auto id = FOCV_Storage::save(mat);
 
         return FOCV_JsiObject::wrap(runtime, "mat", id);
